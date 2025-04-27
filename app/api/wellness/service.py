@@ -35,19 +35,19 @@ class UserWellnessService:
             
             # Prepare data for insertion
             wellness_dict = {
-                "User_id": wellness.user_id,
-                "Physical": wellness.physical,
-                "Financial": wellness.financial,
-                "Emotional": wellness.emotional,
-                "Spiritual": wellness.spiritual,
-                "Social": wellness.social,
-                "Environmental": wellness.environmental,
-                "Creative": wellness.creative
+                "user_id": wellness.user_id,  # Changed from "User_id" to "user_id"
+                "physical": wellness.physical,  # Changed from "Physical" to "physical"
+                "financial": wellness.financial,  # Changed from "Financial" to "financial"
+                "emotional": wellness.emotional,  # Changed from "Emotional" to "emotional"
+                "spiritual": wellness.spiritual,  # Changed from "Spiritual" to "spiritual"
+                "social": wellness.social,  # Changed from "Social" to "social"
+                "environmental": wellness.environmental,  # Changed from "Environmental" to "environmental"
+                "creative": wellness.creative  # Changed from "Creative" to "creative"
             }
             
             # Add date if provided
-            if wellness.date:
-                wellness_dict["Date"] = str(wellness.date)
+            if wellness.record_date:  # Changed from wellness.date to wellness.record_date
+                wellness_dict["date"] = str(wellness.record_date)  # Changed from "Date" to "date"
             
             # Insert wellness record into database
             result = self.supabase.table(self.table).insert(wellness_dict).execute()
@@ -58,16 +58,16 @@ class UserWellnessService:
             # Transform database result to match model format
             db_result = result.data[0]
             return {
-                "wellness_id": db_result["Wellness_id"],
-                "user_id": db_result["User_id"],
-                "date": db_result["Date"],
-                "physical": db_result["Physical"],
-                "financial": db_result["Financial"],
-                "emotional": db_result["Emotional"],
-                "spiritual": db_result["Spiritual"],
-                "social": db_result["Social"],
-                "environmental": db_result["Environmental"],
-                "creative": db_result["Creative"]
+                "wellness_id": db_result["wellness_id"],  # Changed from "Wellness_id" to "wellness_id"
+                "user_id": db_result["user_id"],  # Changed from "User_id" to "user_id"
+                "date": db_result["date"],  # Changed from "Date" to "date"
+                "physical": db_result["physical"],  # Changed from "Physical" to "physical"
+                "financial": db_result["financial"],  # Changed from "Financial" to "financial"
+                "emotional": db_result["emotional"],  # Changed from "Emotional" to "emotional"
+                "spiritual": db_result["spiritual"],  # Changed from "Spiritual" to "spiritual"
+                "social": db_result["social"],  # Changed from "Social" to "social"
+                "environmental": db_result["environmental"],  # Changed from "Environmental" to "environmental"
+                "creative": db_result["creative"]  # Changed from "Creative" to "creative"
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error creating wellness record: {str(e)}")
@@ -86,7 +86,7 @@ class UserWellnessService:
             HTTPException: If wellness record is not found
         """
         try:
-            result = self.supabase.table(self.table).select("*").eq("Wellness_id", wellness_id).execute()
+            result = self.supabase.table(self.table).select("*").eq("wellness_id", wellness_id).execute()  # Changed from "Wellness_id" to "wellness_id"
             
             if not result.data:
                 raise HTTPException(status_code=404, detail=f"Wellness record with ID {wellness_id} not found")
@@ -94,16 +94,16 @@ class UserWellnessService:
             # Transform database result to match model format
             db_result = result.data[0]
             return {
-                "wellness_id": db_result["Wellness_id"],
-                "user_id": db_result["User_id"],
-                "date": db_result["Date"],
-                "physical": db_result["Physical"],
-                "financial": db_result["Financial"],
-                "emotional": db_result["Emotional"],
-                "spiritual": db_result["Spiritual"],
-                "social": db_result["Social"],
-                "environmental": db_result["Environmental"],
-                "creative": db_result["Creative"]
+                "wellness_id": db_result["wellness_id"],  # Changed from "Wellness_id" to "wellness_id"
+                "user_id": db_result["user_id"],  # Changed from "User_id" to "user_id"
+                "date": db_result["date"],  # Changed from "Date" to "date"
+                "physical": db_result["physical"],  # Changed from "Physical" to "physical"
+                "financial": db_result["financial"],  # Changed from "Financial" to "financial"
+                "emotional": db_result["emotional"],  # Changed from "Emotional" to "emotional"
+                "spiritual": db_result["spiritual"],  # Changed from "Spiritual" to "spiritual"
+                "social": db_result["social"],  # Changed from "Social" to "social"
+                "environmental": db_result["environmental"],  # Changed from "Environmental" to "environmental"
+                "creative": db_result["creative"]  # Changed from "Creative" to "creative"
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error retrieving wellness record: {str(e)}")
@@ -134,31 +134,38 @@ class UserWellnessService:
         """
         try:
             # Build query
-            query = self.supabase.table(self.table).select("*").eq("User_id", user_id)
+            query = self.supabase.table(self.table).select("*").eq("user_id", user_id)  # Changed from "User_id" to "user_id"
             
             # Apply date filters if provided
             if start_date:
-                query = query.gte("Date", str(start_date))
+                query = query.gte("date", str(start_date))  # Changed from "Date" to "date"
             if end_date:
-                query = query.lte("Date", str(end_date))
+                query = query.lte("date", str(end_date))  # Changed from "Date" to "date"
                 
             # Apply pagination and execute
-            result = query.order("Date", desc=True).range(offset, offset + limit - 1).execute()
+            result = query.order("date", desc=True).range(offset, offset + limit - 1).execute()  # Changed from "Date" to "date"
             
             # Transform database results to match model format
             transformed_data = []
             for record in result.data:
+                # Handle the date format conversion
+                date_str = record["date"]
+                # Check if the date contains a time component
+                if "T" in date_str:
+                    # Extract just the date portion (YYYY-MM-DD)
+                    date_str = date_str.split("T")[0]
+                
                 transformed_data.append({
-                    "wellness_id": record["Wellness_id"],
-                    "user_id": record["User_id"],
-                    "date": record["Date"],
-                    "physical": record["Physical"],
-                    "financial": record["Financial"],
-                    "emotional": record["Emotional"],
-                    "spiritual": record["Spiritual"],
-                    "social": record["Social"],
-                    "environmental": record["Environmental"],
-                    "creative": record["Creative"]
+                    "wellness_id": record["wellness_id"],
+                    "user_id": record["user_id"],
+                    "date": date_str,  # Use the cleaned date string
+                    "physical": record["physical"],
+                    "financial": record["financial"],
+                    "emotional": record["emotional"],
+                    "spiritual": record["spiritual"],
+                    "social": record["social"],
+                    "environmental": record["environmental"],
+                    "creative": record["creative"]
                 })
             
             return transformed_data
@@ -189,24 +196,24 @@ class UserWellnessService:
             
             # Map model fields to database columns
             field_mapping = {
-                "date": "Date",
-                "physical": "Physical",
-                "financial": "Financial",
-                "emotional": "Emotional",
-                "spiritual": "Spiritual",
-                "social": "Social",
-                "environmental": "Environmental",
-                "creative": "Creative"
+                "record_date": "date",  # Changed from "Date" to "date" and "date" to "record_date"
+                "physical": "physical",  # Kept the same (lowercase)
+                "financial": "financial",  # Kept the same (lowercase)
+                "emotional": "emotional",  # Kept the same (lowercase)
+                "spiritual": "spiritual",  # Kept the same (lowercase)
+                "social": "social",  # Kept the same (lowercase)
+                "environmental": "environmental",  # Kept the same (lowercase)
+                "creative": "creative"  # Kept the same (lowercase)
             }
             
             db_update_data = {field_mapping.get(k, k): v for k, v in update_data.items()}
             
             # Convert date to string if present
-            if "Date" in db_update_data and isinstance(db_update_data["Date"], date):
-                db_update_data["Date"] = str(db_update_data["Date"])
+            if "date" in db_update_data and isinstance(db_update_data["date"], date):  # Changed from "Date" to "date"
+                db_update_data["date"] = str(db_update_data["date"])  # Changed from "Date" to "date"
             
             # Update wellness record in database
-            result = self.supabase.table(self.table).update(db_update_data).eq("Wellness_id", wellness_id).execute()
+            result = self.supabase.table(self.table).update(db_update_data).eq("wellness_id", wellness_id).execute()  # Changed from "Wellness_id" to "wellness_id"
             
             if not result.data:
                 raise HTTPException(status_code=404, detail=f"Wellness record with ID {wellness_id} not found")
@@ -214,16 +221,16 @@ class UserWellnessService:
             # Transform database result to match model format
             db_result = result.data[0]
             return {
-                "wellness_id": db_result["Wellness_id"],
-                "user_id": db_result["User_id"],
-                "date": db_result["Date"],
-                "physical": db_result["Physical"],
-                "financial": db_result["Financial"],
-                "emotional": db_result["Emotional"],
-                "spiritual": db_result["Spiritual"],
-                "social": db_result["Social"],
-                "environmental": db_result["Environmental"],
-                "creative": db_result["Creative"]
+                "wellness_id": db_result["wellness_id"],  # Changed from "Wellness_id" to "wellness_id"
+                "user_id": db_result["user_id"],  # Changed from "User_id" to "user_id"
+                "date": db_result["date"],  # Changed from "Date" to "date"
+                "physical": db_result["physical"],  # Changed from "Physical" to "physical"
+                "financial": db_result["financial"],  # Changed from "Financial" to "financial"
+                "emotional": db_result["emotional"],  # Changed from "Emotional" to "emotional"
+                "spiritual": db_result["spiritual"],  # Changed from "Spiritual" to "spiritual"
+                "social": db_result["social"],  # Changed from "Social" to "social"
+                "environmental": db_result["environmental"],  # Changed from "Environmental" to "environmental"
+                "creative": db_result["creative"]  # Changed from "Creative" to "creative"
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error updating wellness record: {str(e)}")
@@ -246,7 +253,7 @@ class UserWellnessService:
             wellness_data = await self.get_user_wellness(wellness_id)
             
             # Delete wellness record from database
-            result = self.supabase.table(self.table).delete().eq("Wellness_id", wellness_id).execute()
+            result = self.supabase.table(self.table).delete().eq("wellness_id", wellness_id).execute()  # Changed from "Wellness_id" to "wellness_id"
             
             if not result.data:
                 raise HTTPException(status_code=404, detail=f"Wellness record with ID {wellness_id} not found")
