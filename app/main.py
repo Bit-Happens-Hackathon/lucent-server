@@ -13,7 +13,6 @@ from app.api.schools.router import router as schools_router
 from app.api.counselers.router import router as counselors_router
 from app.api.resources.router import router as resources_router
 from app.api.wellness.router import router as wellness_router
-from app.api.surveys.router import router as surveys_router
 from app.api.activity.router import router as activity_router
 
 #Create main API router
@@ -23,7 +22,6 @@ api_router = APIRouter()
 api_router.include_router(users_router)
 api_router.include_router(schools_router)
 api_router.include_router(wellness_router)
-api_router.include_router(surveys_router)
 api_router.include_router(activity_router) 
 api_router.include_router(counselors_router)
 api_router.include_router(resources_router)
