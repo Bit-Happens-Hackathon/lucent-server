@@ -301,7 +301,7 @@ class UserService:
         """
         try:
             # Check if user exists
-            user_result = self.supabase.table("User").select("*").eq("Email", user_id).execute()
+            user_result = self.supabase.table("User").select("*").eq("email", user_id).execute()
             
             if not user_result.data:
                 raise HTTPException(status_code=404, detail=f"User with email {user_id} not found")
