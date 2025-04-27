@@ -6,13 +6,17 @@ import os
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+
+# load the routers for each table
 from app.api.users.router import router as users_router
+from app.api.schools.router import router as schools_router
 
 #Create main API router
 api_router = APIRouter()
 
 # Include all routers
 api_router.include_router(users_router)
+api_router.include_router(schools_router)
 
 # Load environment variables
 load_dotenv()
@@ -26,9 +30,10 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+app.include_router(api_router)
+
 # Configure CORS
 origins = [
-    "http://localhost",
     "http://localhost:8000",  # FastAPI default port
 ]
 

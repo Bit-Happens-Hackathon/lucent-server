@@ -8,13 +8,13 @@ from typing import List
 from app.database import get_supabase_client
 from app.api.users.service import UserService, UserCreate, UserUpdate
 from app.api.users.model import UserCreate, UserResponse
+
 # Create router
 router = APIRouter(
     prefix="/users",
     tags=["users"],
     responses={404: {"description": "Not found"}},
 )
-
 
 # Dependency for UserService
 def get_user_service():
