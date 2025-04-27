@@ -65,7 +65,7 @@ async def get_activity(
 
 @router.get("/", response_model=List[ActivityResponse])
 async def get_activities(
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=365),
     offset: int = Query(0, ge=0),
     activity_service: ActivityService = Depends(get_activity_service)
 ):
@@ -86,7 +86,7 @@ async def get_activities(
 @router.get("/user/{user_id}", response_model=List[ActivityResponse])
 async def get_user_activities(
     user_id: str,
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=365),
     offset: int = Query(0, ge=0),
     activity_service: ActivityService = Depends(get_activity_service)
 ):
