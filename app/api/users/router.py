@@ -5,6 +5,7 @@ This module defines the API endpoints for user operations.
 from http.client import HTTPException
 from fastapi import APIRouter, Depends, Query
 from typing import List
+from fastapi import Body
 
 from app.database import get_supabase_client
 from app.api.users.service import (
@@ -14,7 +15,7 @@ from app.api.users.service import (
     ChatCreate,
     ChatUpdate,
 )
-from app.api.users.model import UserCreate, UserResponse
+from app.api.users.model import UserCreate, UserLogin, UserResponse
 
 # Create router
 router = APIRouter(
@@ -48,6 +49,23 @@ async def create_user(
         UserResponse: Created user data
     """
     return await user_service.create_user(user)
+
+@router.post("/signin", response_model=UserResponse, status_code=201)
+async def sign_in_user(
+    user: UserLogin = Body(...),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Sign in a user.
+    
+    Args:
+        user (UserLogin): User data containing email and password
+        user_service (UserService): User service instance
+        
+    Returns:
+        UserResponse: Signed-in user data
+    """
+    return await user_service.sign_in(user)
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -283,7 +301,6 @@ async def add_message_to_chat(
     
     return await user_service.add_message_to_chat(chat_id, message)
 
-from fastapi import Body
 
 @router.post("/{user_id}/chat", response_model=dict)
 async def chat_with_ai(

@@ -10,7 +10,7 @@ from supabase import Client
 from datetime import date, datetime
 from openai import OpenAI
 from app.api.prompts import default_prompts
-from app.api.users.model import UserCreate, UserUpdate, ChatCreate, ChatUpdate, MessageCreate
+from app.api.users.model import UserCreate, UserUpdate, ChatCreate, ChatUpdate, MessageCreate, UserLogin
 import os
 from dotenv import load_dotenv
 
@@ -115,6 +115,45 @@ class UserService:
         except Exception as e:
             print(f"User creation process failed: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
+        
+    # Sign in
+    async def sign_in(self, user: UserLogin):
+        """
+        Sign in a user with email and password.
+        
+        Args:
+            user (UserLogin): User data containing email and password
+            
+        Returns:
+            dict: User data
+            
+        Raises:
+            HTTPException: If sign-in fails
+        """
+        try:
+            # Authenticate the user
+            auth_response = self.supabase.auth.sign_in_with_password({
+                "email": user.email,
+                "password": user.password
+            })
+            
+            if not auth_response.user:
+                raise HTTPException(status_code=401, detail="Invalid credentials")
+                
+            # Get user data from the database
+            # Get user data from the database using the auth_id from the response
+            result = self.supabase.table(self.table).select("*").eq("auth_id", auth_response.user.id).execute()
+            
+            if not result.data:
+                raise HTTPException(status_code=404, detail="User database record not found")
+                
+            user_data = result.data[0]
+            # Ensure the 'id' field exists in the response
+            if 'id' not in user_data:
+                user_data['id'] = user_data['email']  # Use email as id if id is missing
+            return user_data
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error signing in: {str(e)}")
 
     async def get_user(self, user_id: str):
         """
