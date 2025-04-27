@@ -2,11 +2,22 @@
 User routes module.
 This module defines the API endpoints for user operations.
 """
+from http.client import HTTPException
 from fastapi import APIRouter, Depends, Query
 from typing import List
 
 from app.database import get_supabase_client
-from app.api.users.service import UserService, UserCreate, UserUpdate
+from app.api.users.service import (
+    UserService,
+    UserCreate,
+    UserUpdate,
+    ChatCreate,
+    ChatUpdate,
+    get_user_chat,
+    get_user_chats,
+    add_message_to_chat,
+    delete_user_chat,
+)
 from app.api.users.model import UserCreate, UserResponse
 
 # Create router
@@ -119,3 +130,161 @@ async def delete_user(
         UserResponse: Deleted user data
     """
     return await user_service.delete_user(user_id)
+
+# --------------------------------------------------
+# ------------ Chat routes ----------------
+# --------------------------------------------------
+
+"""
+User routes module extension for chats.
+These routes should be added to your existing user router.
+"""
+from app.api.users.model import ChatCreate, ChatResponse, ChatUpdate, MessageCreate
+
+@router.post("/{user_id}/chats", response_model=ChatResponse, status_code=201)
+async def create_user_chat(
+    user_id: str,
+    chat: ChatCreate,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Create a new chat for a user.
+    
+    Args:
+        user_id (str): User email
+        chat (ChatCreate): Chat data
+        user_service (UserService): User service instance
+        
+    Returns:
+        ChatResponse: Created chat data
+    """
+    # Ensure the user_id in the URL matches the one in the request body
+    if user_id != chat.user_id:
+        raise HTTPException(status_code=400, detail="User ID in URL does not match user_id in request body")
+    
+    return await user_service.create_user_chat(chat)
+
+@router.get("/{user_id}/chats/{chat_id}", response_model=ChatResponse)
+async def get_user_chat(
+    user_id: str,
+    chat_id: int,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Get a chat by ID for a specific user.
+    
+    Args:
+        user_id (str): User email
+        chat_id (int): Chat ID
+        user_service (UserService): User service instance
+        
+    Returns:
+        ChatResponse: Chat data
+    """
+    chat = await user_service.get_user_chat(chat_id)
+    
+    # Ensure the chat belongs to the specified user
+    if chat["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail=f"Chat with ID {chat_id} not found for user {user_id}")
+    
+    return chat
+
+@router.get("/{user_id}/chats", response_model=List[ChatResponse])
+async def get_user_chats(
+    user_id: str,
+    limit: int = Query(100, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Get all chats for a user with pagination.
+    
+    Args:
+        user_id (str): User email
+        limit (int, optional): Maximum number of chats to return. Defaults to 100.
+        offset (int, optional): Number of chats to skip. Defaults to 0.
+        user_service (UserService): User service instance
+        
+    Returns:
+        List[ChatResponse]: List of chats
+    """
+    return await user_service.get_user_chats(user_id, limit, offset)
+
+@router.put("/{user_id}/chats/{chat_id}", response_model=ChatResponse)
+async def update_user_chat(
+    user_id: str,
+    chat_id: int,
+    chat: ChatUpdate,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Update a chat by ID for a specific user.
+    
+    Args:
+        user_id (str): User email
+        chat_id (int): Chat ID
+        chat (ChatUpdate): Updated chat data
+        user_service (UserService): User service instance
+        
+    Returns:
+        ChatResponse: Updated chat data
+    """
+    # First check if chat belongs to user
+    existing_chat = await user_service.get_user_chat(chat_id)
+    
+    if existing_chat["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail=f"Chat with ID {chat_id} not found for user {user_id}")
+    
+    return await user_service.update_user_chat(chat_id, chat)
+
+@router.delete("/{user_id}/chats/{chat_id}", response_model=ChatResponse)
+async def delete_user_chat(
+    user_id: str,
+    chat_id: int,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Delete a chat by ID for a specific user.
+    
+    Args:
+        user_id (str): User email
+        chat_id (int): Chat ID
+        user_service (UserService): User service instance
+        
+    Returns:
+        ChatResponse: Deleted chat data
+    """
+    # First check if chat belongs to user
+    existing_chat = await user_service.get_user_chat(chat_id)
+    
+    if existing_chat["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail=f"Chat with ID {chat_id} not found for user {user_id}")
+    
+    return await user_service.delete_user_chat(chat_id)
+
+@router.post("/{user_id}/chats/{chat_id}/messages", response_model=ChatResponse)
+async def add_message_to_chat(
+    user_id: str,
+    chat_id: int,
+    message: MessageCreate,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Add a message to a chat for a specific user.
+    
+    Args:
+        user_id (str): User email
+        chat_id (int): Chat ID
+        message (MessageCreate): Message data
+        user_service (UserService): User service instance
+        
+    Returns:
+        ChatResponse: Updated chat data
+    """
+    # First check if chat belongs to user
+    existing_chat = await user_service.get_user_chat(chat_id)
+    
+    if existing_chat["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail=f"Chat with ID {chat_id} not found for user {user_id}")
+    
+    return await user_service.add_message_to_chat(chat_id, message)

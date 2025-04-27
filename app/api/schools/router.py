@@ -7,7 +7,7 @@ from typing import List
 from app.database import get_supabase_client
 from app.api.schools.service import SchoolService
 from app.api.schools.model import SchoolCreate, SchoolResponse, SchoolUpdate
-
+from app.api.resources.model import ResourceResponse
 # Create router
 router = APIRouter(
     prefix="/schools",
@@ -113,3 +113,77 @@ async def delete_school(
         SchoolResponse: Deleted school data
     """
     return await school_service.delete_school(name)
+
+@router.post("/{school_id}/resources/{resource_id}", status_code=201)
+async def add_resource_to_school(
+    school_id: str,
+    resource_id: str,
+    school_service: SchoolService = Depends(get_school_service)
+):
+    """
+    Add a resource to a school.
+    
+    Args:
+        school_id (str): School name
+        resource_id (str): Resource type
+        school_service (SchoolService): School service instance
+        
+    Returns:
+        dict: Created school resource association
+    """
+    return await school_service.add_resource_to_school(school_id, resource_id)
+
+@router.delete("/{school_id}/resources/{resource_id}")
+async def remove_resource_from_school(
+    school_id: str,
+    resource_id: str,
+    school_service: SchoolService = Depends(get_school_service)
+):
+    """
+    Remove a resource from a school.
+    
+    Args:
+        school_id (str): School name
+        resource_id (str): Resource type
+        school_service (SchoolService): School service instance
+        
+    Returns:
+        dict: Deleted school resource association
+    """
+    return await school_service.remove_resource_from_school(school_id, resource_id)
+
+@router.get("/{school_id}/resources", response_model=List[ResourceResponse])
+async def get_school_resources(
+    school_id: str,
+    school_service: SchoolService = Depends(get_school_service)
+):
+    """
+    Get all resources for a school.
+    
+    Args:
+        school_id (str): School name
+        school_service (SchoolService): School service instance
+        
+    Returns:
+        List[ResourceResponse]: List of resources
+    """
+    return await school_service.get_school_resources(school_id)
+
+@router.get("/{school_id}/resources/{resource_id}")
+async def get_school_resource(
+    school_id: str,
+    resource_id: str,
+    school_service: SchoolService = Depends(get_school_service)
+):
+    """
+    Get a specific resource for a school.
+    
+    Args:
+        school_id (str): School name
+        resource_id (str): Resource type
+        school_service (SchoolService): School service instance
+        
+    Returns:
+        ResourceResponse: Resource data
+    """
+    return await school_service.get_school_resource_by_type(school_id, resource_id)
