@@ -41,11 +41,9 @@ async def create_user(
 ):
     """
     Create a new user.
-    
     Args:
-        user (UserCreate): User data
+        user (UserCreate): User data containing school name, email, and birthdate
         user_service (UserService): User service instance
-        
     Returns:
         UserResponse: Created user data
     """

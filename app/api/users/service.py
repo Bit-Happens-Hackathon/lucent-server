@@ -2,6 +2,9 @@
 User service module.
 This module contains the business logic for user operations.
 """
+import json
+import random
+import string
 from fastapi import HTTPException
 from supabase import Client
 from datetime import date, datetime
@@ -23,30 +26,88 @@ class UserService:
 
     async def create_user(self, user: UserCreate):
         """
-        Create a new user in the database.
+        Create a new user with authentication and database entry.
         
         Args:
-            user (UserCreate): User data
+            user (UserCreate): User data with name, email, password, birthdate, and school
             
         Returns:
-            dict: Created user data
+            dict: Created user data with ID and other details
             
         Raises:
-            HTTPException: If user creation fails
+            HTTPException: If user creation fails in either step
         """
         try:
-            # Convert date to string for Supabase
-            user_dict = user
-            user_dict["birthdate"] = str(user.birthdate)
-            
-            # Insert user into database
-            result = self.supabase.table(self.table).insert(user_dict).execute()
-            
-            if not result.data:
-                raise HTTPException(status_code=500, detail="Failed to create user")
+            # Step 1: Create the authenticated user
+            try:
+                # Use the password provided by the user
+                auth_response = self.supabase.auth.admin.create_user({
+                    "email": user.email,
+                    "password": user.password,
+                    "email_confirm": False
+                })
                 
-            return result.data[0]
+                auth_id = auth_response.user.id
+                print(f"Created auth user with ID: {auth_id}")
+                
+            except Exception as auth_error:
+                print(f"Auth user creation failed: {str(auth_error)}")
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Authentication account creation failed: {str(auth_error)}"
+                )
+                
+            # Step 2: Create the database user (excluding password fields)
+            try:
+                # Convert user to a dictionary, excluding password fields
+                user_dict = {
+                    "name": user.name,
+                    "email": user.email,
+                    "birthdate": str(user.birthdate),
+                    "school": user.school,
+                    "auth_id": auth_id
+                }
+                
+                # Insert user into database
+                result = self.supabase.table(self.table).insert(user_dict).execute()
+                
+                if not result.data:
+                    # Roll back auth user if DB creation fails
+                    try:
+                        self.supabase.auth.admin.delete_user(auth_id)
+                    except:
+                        pass  # Best effort cleanup
+                    
+                    raise HTTPException(status_code=500, detail="Failed to create database user record")
+                    
+                # Transform the response to match expected model
+                user_data = result.data[0]
+                
+                return {
+                    "id": user_data["email"],
+                    "name": user_data["name"],
+                    "email": user_data["email"],
+                    "birthdate": user_data["birthdate"],
+                    "school": user_data["school"],
+                    "auth_id": auth_id,
+                    "created_at": datetime.now().isoformat()
+                }
+                
+            except Exception as db_error:
+                # Try to roll back auth user if something fails
+                try:
+                    self.supabase.auth.admin.delete_user(auth_id)
+                except:
+                    pass  # Best effort cleanup
+                    
+                print(f"Database user creation failed: {str(db_error)}")
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Database user creation failed: {str(db_error)}"
+                )
+                
         except Exception as e:
+            print(f"User creation process failed: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
 
     async def get_user(self, user_id: str):
@@ -422,6 +483,18 @@ class UserService:
                     raise HTTPException(status_code=500, detail="Failed to create chat")
                     
                 new_chat_id = chat_result.data[0]["chat_id"]
+
+                # Update the wellness accordingly
+                try:
+                    wellness_result = await self.update_wellness_from_messages(chat_data["messages"], user_id)
+                    print("Wellness update result:", wellness_result)
+                except Exception as e:
+                    print(f"Error calling update_wellness_from_messages: {str(e)}")
+                    import traceback
+                    print(traceback.format_exc())              
+                
+                if not update_result.data:
+                    raise HTTPException(status_code=500, detail="Failed to update chat")
                 
                 # Return both the response and the new chat ID
                 return {"response": ai_response, "chat_id": new_chat_id, "school_resources": resources if resources else []}
@@ -441,6 +514,15 @@ class UserService:
                 
                 # Update the chat with the new messages
                 update_result = self.supabase.table("User_Chats").update({"messages": updated_messages}).eq("chat_id", chat_id).execute()
+
+                # Update the wellness accordingly
+                try:
+                    wellness_result = await self.update_wellness_from_messages(updated_messages, user_id)
+                    print("Wellness update result:", wellness_result)
+                except Exception as e:
+                    print(f"Error calling update_wellness_from_messages: {str(e)}")
+                    import traceback
+                    print(traceback.format_exc())              
                 
                 if not update_result.data:
                     raise HTTPException(status_code=500, detail="Failed to update chat")
@@ -544,3 +626,117 @@ class UserService:
             return result.data[0]
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error adding system message: {str(e)}")
+
+    async def update_wellness_from_messages(self, messages: list, user_id):
+        try:
+            print("Starting wellness update with user_id:", user_id)
+            print("Messages count:", len(messages) if messages else 0)
+            
+            # Get the user's most recent wellness
+            wellness_prompt = default_prompts["wellness_prompt"]
+            
+            # Convert messages to a string representation
+            # Messages are likely objects with 'sender' and 'content' keys
+            messages_text = "\n".join([f"{msg['sender']}: {msg['content']}" for msg in messages])
+            full_prompt = wellness_prompt + "\n\n" + messages_text
+            
+            print("Sending prompt to OpenAI...")
+            # Ask llm to adjust categories
+            response = self.openai_client.responses.create(
+                model="gpt-4.1",
+                input=full_prompt
+            )
+            
+            print("OpenAI response received:", response)
+            
+            # Parse the LLM's response to extract wellness scores
+            try:
+                # Handle the OpenAI response correctly - the text might be in the 'output_text' field
+                response_text = response.output_text
+                print("Response text to parse:", response_text)
+
+                # Clean the response text to handle the format [{"category": score},]
+                response_text = response_text.strip()
+                if response_text.startswith('[') and response_text.endswith(']'):
+                    # Convert the list of objects format to a single JSON object
+                    wellness_items = json.loads(response_text)
+                    wellness_data = {}
+                    for item in wellness_items:
+                        for category, score in item.items():
+                            wellness_data[category] = score
+                    response_text = json.dumps(wellness_data)
+                
+                # Assuming the LLM returns a JSON string like {"Physical": 80, "Financial": 65, ...}
+                wellness_data = json.loads(response_text)
+                print("Parsed wellness data:", wellness_data)
+                
+                # Ensure all required categories are present - match the case with your database
+                required_categories = ["Physical", "Financial", "Emotional", "Spiritual", 
+                                    "Social", "Environmental", "Creative"]
+                
+                # Create a mapping between response keys and DB column names
+                category_mapping = {
+                    "physical": "Physical",
+                    "financial": "Financial", 
+                    "emotional": "Emotional",
+                    "spiritual": "Spiritual",
+                    "social": "Social",
+                    "environmental": "Environmental",
+                    "creative": "Creative"
+                }
+                
+                # Normalize the wellness data to match DB column names
+                normalized_data = {}
+                for response_key, db_column in category_mapping.items():
+                    # Try both lowercase and uppercase keys in the response
+                    value = wellness_data.get(response_key, wellness_data.get(db_column))
+                    if value is None:
+                        raise ValueError(f"Missing required category: {response_key} or {db_column}")
+                    
+                    if not isinstance(value, int) or value < 0 or value > 100:
+                        raise ValueError(f"Invalid score for {db_column}: {value}. Must be integer between 0-100")
+                    
+                    normalized_data[db_column] = value
+                
+                # Structure the data for database update
+                update_data = {
+                    "User_id": user_id,
+                    "Date": datetime.now().astimezone().isoformat(),
+                    "Physical": normalized_data["Physical"],
+                    "Financial": normalized_data["Financial"],
+                    "Emotional": normalized_data["Emotional"],
+                    "Spiritual": normalized_data["Spiritual"],
+                    "Social": normalized_data["Social"],
+                    "Environmental": normalized_data["Environmental"],
+                    "Creative": normalized_data["Creative"]
+                }
+                
+                print("Prepared update data:", update_data)
+                
+                # Update user's wellness in the database
+                result = self.supabase.table("User_Wellness").insert(
+                    update_data
+                ).execute()
+
+                print("Database update result:", result.data if hasattr(result, 'data') else result)
+                
+                return {"success": True, "data": result.data if hasattr(result, 'data') else result}
+            
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {str(e)}")
+                print(f"Failed to parse: '{response_text}'")
+                return {"success": False, "error": f"Failed to parse LLM response as JSON: {str(e)}"}
+            except ValueError as e:
+                print(f"Value error: {str(e)}")
+                return {"success": False, "error": str(e)}
+            except Exception as e:
+                print(f"Unexpected error in parsing response: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                return {"success": False, "error": f"Unexpected error: {str(e)}"}
+        
+        except Exception as e:
+            print(f"Error in update_wellness_from_messages: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return {"success": False, "error": f"Unexpected error: {str(e)}"}

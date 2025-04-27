@@ -10,6 +10,8 @@ from app.database import get_supabase_client
 
 supabase = get_supabase_client()
 
+from pydantic import BaseModel, Field, validator
+
 class UserCreate(BaseModel):
     """
     Data model for creating a new user.
@@ -18,6 +20,14 @@ class UserCreate(BaseModel):
     email: str = Field(..., description="Email address of the user")
     birthdate: date = Field(..., description="User's birth date in YYYY-MM-DD format")
     school: str = Field(..., description="Name of the user's school")
+    password: str = Field(..., description="User password", min_length=8)
+    confirm_password: str = Field(..., description="Confirm password")
+    
+    @validator('confirm_password')
+    def passwords_match(cls, v, values):
+        if 'password' in values and v != values['password']:
+            raise ValueError('Passwords do not match')
+        return v
 
 
 class UserResponse(BaseModel):
@@ -30,6 +40,7 @@ class UserResponse(BaseModel):
     birthdate: date
     school: str
     created_at: Optional[str] = None
+    auth_id: Optional[str] = None  # Add auth_id field to the response
 
 
 class UserUpdate(BaseModel):
