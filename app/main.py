@@ -25,10 +25,9 @@ api_router.include_router(schools_router)
 api_router.include_router(wellness_router)
 api_router.include_router(surveys_router)
 api_router.include_router(activity_router) 
-
 api_router.include_router(counselors_router)
 api_router.include_router(resources_router)
-api_router.include_router()
+
 
 # Load environment variables
 load_dotenv()

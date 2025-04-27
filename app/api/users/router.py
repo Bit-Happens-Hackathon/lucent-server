@@ -13,10 +13,6 @@ from app.api.users.service import (
     UserUpdate,
     ChatCreate,
     ChatUpdate,
-    get_user_chat,
-    get_user_chats,
-    add_message_to_chat,
-    delete_user_chat,
 )
 from app.api.users.model import UserCreate, UserResponse
 
@@ -288,3 +284,111 @@ async def add_message_to_chat(
         raise HTTPException(status_code=404, detail=f"Chat with ID {chat_id} not found for user {user_id}")
     
     return await user_service.add_message_to_chat(chat_id, message)
+
+from fastapi import Body
+
+@router.post("/{user_id}/chat", response_model=dict)
+async def chat_with_ai(
+    user_id: str,
+    data: dict = Body(...),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Chat with AI and save the conversation.
+    
+    Args:
+        user_id (str): User email
+        data (dict): Request data including prompt and optional chat_id
+        user_service (UserService): User service instance
+        
+    Returns:
+        dict: AI response, chat_id, and school resources
+    """
+    # Get the user to verify existence and get the school
+    user = await user_service.get_user(user_id)
+    user_school = user["school"]  # Make sure we're getting the school properly
+    
+    prompt = data.get("prompt")
+    chat_id = data.get("chat_id")
+    
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Prompt is required")
+    
+    return await user_service.get_openai_response(prompt, user_id, user_school, chat_id)
+
+@router.get("/{user_id}/chats/{chat_id}", response_model=dict)
+async def get_chat_history(
+    user_id: str,
+    chat_id: int,
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Get chat history.
+    
+    Args:
+        user_id (str): User email
+        chat_id (int): Chat ID
+        user_service (UserService): User service instance
+        
+    Returns:
+        dict: Chat history
+    """
+    # Get the chat
+    chat = await user_service.get_chat_history(chat_id)
+    
+    # Verify the chat belongs to the user
+    if chat["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail=f"Chat with ID {chat_id} not found for user {user_id}")
+    
+    return chat
+
+@router.get("/{user_id}/recent-chats", response_model=List[dict])
+async def get_recent_chats(
+    user_id: str,
+    limit: int = Query(10, ge=1, le=50),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Get recent chats for a user.
+    
+    Args:
+        user_id (str): User email
+        limit (int, optional): Maximum number of chats to return. Defaults to 10.
+        user_service (UserService): User service instance
+        
+    Returns:
+        List[dict]: List of recent chats
+    """
+    return await user_service.get_user_recent_chats(user_id, limit)
+
+@router.post("/{user_id}/chats/{chat_id}/system-message", response_model=dict)
+async def add_system_message(
+    user_id: str,
+    chat_id: int,
+    data: dict = Body(...),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Add a system message to the chat.
+    
+    Args:
+        user_id (str): User email
+        chat_id (int): Chat ID
+        data (dict): Request data including system_message
+        user_service (UserService): User service instance
+        
+    Returns:
+        dict: Updated chat data
+    """
+    # Get the chat to verify ownership
+    chat = await user_service.get_chat_history(chat_id)
+    
+    # Verify the chat belongs to the user
+    if chat["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail=f"Chat with ID {chat_id} not found for user {user_id}")
+    
+    system_message = data.get("system_message")
+    if not system_message:
+        raise HTTPException(status_code=400, detail="System message is required")
+    
+    return await user_service.add_message_to_context(chat_id, system_message)
