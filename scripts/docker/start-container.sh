@@ -21,6 +21,10 @@ docker run -d --name ${container_name} \
     -v $(pwd):/app \
     ${image_name}
 
+# Install dependencies inside the container
+echo "Installing dependencies..."
+docker exec ${container_name} pip install -r /app/requirements.txt
+
 # Show running container
 echo "Container started:"
 docker ps --filter name=${container_name}
