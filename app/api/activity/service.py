@@ -28,7 +28,7 @@ class ActivityService:
         """
         try:
             # Convert datetime to string for Supabase
-            activity_dict = activity.dict()
+            activity_dict = activity.model_dump()
             if activity_dict.get("login"):
                 activity_dict["login"] = activity_dict["login"].isoformat()
             
@@ -85,23 +85,26 @@ class ActivityService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error retrieving activities: {str(e)}")
 
-    async def get_user_activities(self, user_id: str, limit: int = 100, offset: int = 0):
+    async def get_user_activities(self, user_id: str, limit: int = 365, offset: int = 0):
         """
-        Get activities for a specific user with pagination.
+        Get login dates for a specific user with pagination.
         
         Args:
             user_id (str): User ID (email)
-            limit (int, optional): Maximum number of activities to return. Defaults to 100.
+            limit (int, optional): Maximum number of activities to return. Defaults to 365.
             offset (int, optional): Number of activities to skip. Defaults to 0.
             
         Returns:
-            list: List of user activities
+            list: List of activity objects with login dates
             
         Raises:
             HTTPException: If retrieval fails
         """
         try:
             result = self.supabase.table(self.table).select("*").eq("user_id", user_id).range(offset, offset + limit - 1).execute()
+            
+            # Return the full activity objects instead of just the login field
+            # This ensures we match the expected response model structure
             return result.data
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error retrieving user activities: {str(e)}")
