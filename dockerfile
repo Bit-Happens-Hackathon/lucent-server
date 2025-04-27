@@ -2,15 +2,20 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install FastAPI and Uvicorn with all standard dependencies
-RUN pip install --no-cache-dir fastapi "uvicorn[standard]" 
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
 
-# Set up Python path
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application
+COPY . .
+
+# Create the app directory if it doesn't exist
+RUN mkdir -p /app/app
+
+# Set environment variables
 ENV PYTHONPATH=/app
 
-# Create minimal app structure if not mounted
-RUN mkdir -p /app/app
-RUN echo 'from fastapi import FastAPI\n\napp = FastAPI(\n    title="Lucent API",\n    description="Lucent Server API",\n    version="0.1.0"\n)\n\n@app.get("/")\nasync def root():\n    return {"message": "Welcome to Lucent API. Server is running."}\n' > /app/app/main.py
-
-# Command to run the server
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Command to run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
