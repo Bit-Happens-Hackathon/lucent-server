@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 # load the routers for each table
 from app.api.users.router import router as users_router
 from app.api.schools.router import router as schools_router
+from app.api.wellness.router import router as wellness_router
+from app.api.surveys.router import router as surveys_router
+from app.api.activity.router import router as activity_router
 
 #Create main API router
 api_router = APIRouter()
@@ -17,6 +20,10 @@ api_router = APIRouter()
 # Include all routers
 api_router.include_router(users_router)
 api_router.include_router(schools_router)
+api_router.include_router(wellness_router)
+api_router.include_router(surveys_router)
+api_router.include_router(activity_router) 
+
 
 # Load environment variables
 load_dotenv()
