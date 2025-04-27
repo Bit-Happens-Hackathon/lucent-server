@@ -1,15 +1,62 @@
-# Entry point to the app
-from fastapi import FastAPI
+"""
+Main module for FastAPI application.
+This is the entry point to the Lucent API.
+"""
+import os
+from fastapi import FastAPI, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from app.api.users.router import router as users_router
 
+#Create main API router
+api_router = APIRouter()
+
+# Include all routers
+api_router.include_router(users_router)
+
+# Load environment variables
 load_dotenv()
 
+# Create FastAPI app
 app = FastAPI(
     title="Lucent API",
     description="Lucent Server API",
-    version="0.1.0"
+    version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
+# Configure CORS
+origins = [
+    "http://localhost",
+    "http://localhost:8000",  # FastAPI default port
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Root endpoint
 @app.get("/")
 async def root():
+    """
+    Root endpoint returning a welcome message.
+    
+    Returns:
+        dict: Welcome message
+    """
     return {"message": "Welcome to Lucent API. Server is running."}
+
+# Run the application
+if __name__ == "__main__":
+    import uvicorn
+    
+    host = os.environ.get("API_HOST", "0.0.0.0")
+    port = int(os.environ.get("API_PORT", 8000))
+    debug = os.environ.get("DEBUG", "False").lower() in ("true", "1", "t")
+    
+    uvicorn.run("main:app", host=host, port=port, reload=debug)
