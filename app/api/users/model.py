@@ -29,6 +29,12 @@ class UserCreate(BaseModel):
             raise ValueError('Passwords do not match')
         return v
 
+class UserLogin(BaseModel):
+    """
+    Data model for user login.
+    """
+    email: str = Field(..., description="Email address of the user")
+    password: str = Field(..., description="User password", min_length=8)
 
 class UserResponse(BaseModel):
     """

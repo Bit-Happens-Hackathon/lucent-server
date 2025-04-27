@@ -3,6 +3,8 @@ Main module for FastAPI application.
 This is the entry point to the Lucent API.
 """
 import os
+
+from requests import Request
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -38,6 +40,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+@app.middleware("http")
+async def add_utf8_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    return response
 
 app.include_router(api_router)
 

@@ -4,7 +4,7 @@ This module contains the business logic for user wellness operations.
 """
 from fastapi import HTTPException
 from supabase import Client
-from datetime import date
+from datetime import date, datetime
 from typing import List, Dict, Any, Optional
 
 from app.api.wellness.model import UserWellnessCreate, UserWellnessUpdate
@@ -29,31 +29,27 @@ class UserWellnessService:
         """
         try:
             # Validate that user exists first
-            user_result = self.supabase.table("User").select("Email").eq("Email", wellness.user_id).execute()
+            user_result = self.supabase.table("User").select("email").eq("email", wellness.user_id).execute()
             if not user_result.data:
                 raise HTTPException(status_code=404, detail=f"User with email {wellness.user_id} not found")
             
             # Prepare data for insertion
             wellness_dict = {
-                "user_id": wellness.user_id,  # Changed from "User_id" to "user_id"
-                "physical": wellness.physical,  # Changed from "Physical" to "physical"
-                "financial": wellness.financial,  # Changed from "Financial" to "financial"
-                "emotional": wellness.emotional,  # Changed from "Emotional" to "emotional"
-                "spiritual": wellness.spiritual,  # Changed from "Spiritual" to "spiritual"
-                "social": wellness.social,  # Changed from "Social" to "social"
-                "environmental": wellness.environmental,  # Changed from "Environmental" to "environmental"
-                "creative": wellness.creative  # Changed from "Creative" to "creative"
+                "user_id": wellness.user_id,
+                "physical": wellness.physical,
+                "financial": wellness.financial,
+                "emotional": wellness.emotional,
+                "spiritual": wellness.spiritual,
+                "social": wellness.social,
+                "environmental": wellness.environmental,
+                "creative": wellness.creative,
+                "date": datetime.now().isoformat()
             }
             
-            # Add date if provided
-            if wellness.record_date:  # Changed from wellness.date to wellness.record_date
-                wellness_dict["date"] = str(wellness.record_date)  # Changed from "Date" to "date"
             
             # Insert wellness record into database
             result = self.supabase.table(self.table).insert(wellness_dict).execute()
-            
-            if not result.data:
-                raise HTTPException(status_code=500, detail="Failed to create wellness record")
+
                 
             # Transform database result to match model format
             db_result = result.data[0]
