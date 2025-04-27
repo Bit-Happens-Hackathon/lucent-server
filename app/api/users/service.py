@@ -40,6 +40,12 @@ class UserService:
         try:
             # Step 1: Create the authenticated user
             try:
+                #ensure passwords match
+                if user.password != user.confirm_password:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Passwords do not match"
+                    )
                 # Use the password provided by the user
                 auth_response = self.supabase.auth.admin.create_user({
                     "email": user.email,
