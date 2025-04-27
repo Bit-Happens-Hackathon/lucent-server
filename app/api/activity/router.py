@@ -11,8 +11,8 @@ from app.api.activity.model import ActivityCreate, ActivityResponse, ActivityUpd
 
 # Create router
 router = APIRouter(
-    prefix="/activities",
-    tags=["activities"],
+    prefix="/activity",
+    tags=["activity"],
     responses={404: {"description": "Not found"}},
 )
 

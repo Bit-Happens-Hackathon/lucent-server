@@ -12,8 +12,8 @@ from app.api.wellness.service import UserWellnessService
 
 # Create router
 router = APIRouter(
-    prefix="/user-wellness",
-    tags=["user-wellness"],
+    prefix="/wellness",
+    tags=["wellness"],
     responses={404: {"description": "Not found"}},
 )
 
