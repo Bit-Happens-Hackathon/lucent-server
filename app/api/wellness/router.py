@@ -3,14 +3,17 @@ User wellness routes module.
 This module defines the API endpoints for user wellness operations.
 """
 from fastapi import APIRouter, Depends, Query
-from typing import List
+from typing import List, Optional
+from datetime import date
+
 from app.database import get_supabase_client
 from app.api.wellness.model import UserWellnessCreate, UserWellnessResponse, UserWellnessUpdate
 from app.api.wellness.service import UserWellnessService
+
 # Create router
 router = APIRouter(
-    prefix="/user-wellness",
-    tags=["user-wellness"],
+    prefix="/wellness",
+    tags=["wellness"],
     responses={404: {"description": "Not found"}},
 )
 
@@ -63,6 +66,8 @@ async def get_user_wellness_records(
     user_id: str,
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     wellness_service: UserWellnessService = Depends(get_user_wellness_service)
 ):
     """
@@ -72,12 +77,20 @@ async def get_user_wellness_records(
         user_id (str): User ID (email)
         limit (int, optional): Maximum number of records to return. Defaults to 100.
         offset (int, optional): Number of records to skip. Defaults to 0.
+        start_date (date, optional): Start date for filtering records.
+        end_date (date, optional): End date for filtering records.
         wellness_service (UserWellnessService): User wellness service instance
         
     Returns:
         List[UserWellnessResponse]: List of wellness records
     """
-    return await wellness_service.get_user_wellness_records(user_id, limit, offset)
+    return await wellness_service.get_user_wellness_records(
+        user_id, 
+        limit, 
+        offset,
+        start_date,
+        end_date
+    )
 
 @router.put("/{wellness_id}", response_model=UserWellnessResponse)
 async def update_user_wellness(

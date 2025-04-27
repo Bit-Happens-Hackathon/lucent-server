@@ -12,12 +12,20 @@ from app.api.users.router import router as users_router
 from app.api.schools.router import router as schools_router
 from app.api.counselers.router import router as counselors_router
 from app.api.resources.router import router as resources_router
+from app.api.wellness.router import router as wellness_router
+from app.api.surveys.router import router as surveys_router
+from app.api.activity.router import router as activity_router
+
 #Create main API router
 api_router = APIRouter()
 
 # Include all routers
 api_router.include_router(users_router)
 api_router.include_router(schools_router)
+api_router.include_router(wellness_router)
+api_router.include_router(surveys_router)
+api_router.include_router(activity_router) 
+
 api_router.include_router(counselors_router)
 api_router.include_router(resources_router)
 api_router.include_router()
@@ -41,13 +49,13 @@ origins = [
     "http://localhost:8000",  # FastAPI default port
 ]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 # Root endpoint
 @app.get("/")
